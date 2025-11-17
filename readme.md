@@ -3,7 +3,7 @@
 DESC:
 ---
 ---
-Mateusz Szczęśniak, Wojtek Minior, Kacper Kamiński
+Mateusz Szczęśniak, Wojciech Minior, Kacper Kamiński
 ---
 ## Setup
 
