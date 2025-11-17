@@ -21,17 +21,16 @@ def analyze_model(model, num_batches=400, phase_name=""):
     model.eval()
     _, dataloader = dataset_load()
 
-    # Statistics tracking
+
     accuracies = []
     total_time = 0.0
 
-    # Class names for Fashion MNIST
+
     class_names = [
         "T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
         "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"
     ]
 
-    # Track misclassifications per class
     class_errors = {i: 0 for i in range(10)}
     class_total = {i: 0 for i in range(10)}
 
@@ -41,14 +40,14 @@ def analyze_model(model, num_batches=400, phase_name=""):
 
     total_batches = len(dataloader)
 
-    # Calculate print interval: sqrt(num_batches) rounded
+
     import math
     print_interval = max(1, round(math.sqrt(num_batches)))
     print(f"Printing every {print_interval} batches...\n")
 
     with torch.no_grad():
         for idx, (images, labels) in enumerate(dataloader):
-            # Stop after num_batches
+
             if idx >= num_batches:
                 break
 
@@ -57,40 +56,39 @@ def analyze_model(model, num_batches=400, phase_name=""):
             images = images.to(DEVICE)
             labels = labels.to(DEVICE)
 
-            # Inference timing
+
             t_start = time.time()
             outputs = model(images)
             t_stop = time.time() - t_start
 
-            # Calculate metrics
             predictions = outputs.argmax(dim=1)
             batch_accuracy = (predictions == labels).float().mean().item()
             t_per_sample = (t_stop / len(outputs)) * 1e3
             t_stop_ms = t_stop * 1e3
 
-            # Track per-class errors
+
             for label, pred in zip(labels.cpu().numpy(), predictions.cpu().numpy()):
                 class_total[label] += 1
                 if label != pred:
                     class_errors[label] += 1
 
-            # Accumulate statistics
+
             accuracies.append(batch_accuracy * 100)
             total_time += t_stop_ms
 
-            # Print batch results at intervals
+
             if test_num % print_interval == 0 or test_num == num_batches:
                 print(f"Batch {test_num}/{num_batches}: Acc={batch_accuracy*100:5.1f}%  Time={t_stop_ms:5.2f}ms  "
                       f"GT={labels.cpu().numpy()}  Pred={predictions.cpu().numpy()}")
 
-    # Calculate statistics
+
     accuracies_np = np.array(accuracies)
     mean_accuracy = np.mean(accuracies_np)
     std_accuracy = np.std(accuracies_np)
     avg_time = total_time / num_batches
     avg_time_per_sample = avg_time / BATCH_SIZE
 
-    # Calculate per-class error rates
+
     class_error_rates = []
     for class_id in range(10):
         if class_total[class_id] > 0:
@@ -99,7 +97,7 @@ def analyze_model(model, num_batches=400, phase_name=""):
                                      error_rate, class_errors[class_id],
                                      class_total[class_id]))
 
-    # Group accuracies into 10% ranges
+
     accuracy_distribution = {
         "0-10%": 0, "10-20%": 0, "20-30%": 0, "30-40%": 0, "40-50%": 0,
         "50-60%": 0, "60-70%": 0, "70-80%": 0, "80-90%": 0, "90-100%": 0
@@ -132,7 +130,7 @@ def analyze_model(model, num_batches=400, phase_name=""):
     print(f"{'='*70}")
     print("Accuracy Distribution:")
     for range_name, count in accuracy_distribution.items():
-        # Scale down for readability
+
         bar = "█" * (count // 5 if count > 0 else 0)
         print(f"  {range_name:9s}: {count:3d} batches {bar}")
 
@@ -173,7 +171,7 @@ def main() -> int:
     prune.ln_structured(model.fc2, name="weight",
                         amount=0.30, n=2, dim=0)
 
-    # Make pruning permanent (remove masks and actually delete weights)
+
     print("Making pruning permanent (removing masks)...")
     prune.remove(model.conv1, 'weight')
     prune.remove(model.conv2, 'weight')
@@ -181,7 +179,7 @@ def main() -> int:
     prune.remove(model.fc2, 'weight')
     print("✓ Pruning made permanent - weights actually removed\n")
 
-    # Show pruning statistics
+
     print("-"*70)
     print("PRUNING STATISTICS")
     print("-"*70)
@@ -210,16 +208,15 @@ def main() -> int:
     print(f"NOTE: Model file size stays same - zeros are still stored!")
     print("-"*70 + "\n")
 
-    # Analyze after pruning - FULL 1250 BATCHES
+
     accuracy_before = analyze_model(
         model, num_batches=1250, phase_name="AFTER PRUNING ")
 
-    # PHASE 2: FINE-TUNING ON CUDA
     print("\n" + "="*70)
     print(f"PHASE 2: FINE-TUNING (10 EPOCHS) ON {DEVICE}")
     print("="*70 + "\n")
 
-    # Make sure model is on CUDA for training
+
     model.to(DEVICE)
     print(f"Model is on: {next(model.parameters()).device}")
 
@@ -245,12 +242,11 @@ def main() -> int:
 
             epoch_loss += loss.item()
 
-            # Track accuracy during training
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Update progress bar
+
             loop.set_postfix({
                 'loss': f'{loss.item():.4f}',
                 'acc': f'{100. * correct / total:.2f}%'
@@ -258,7 +254,7 @@ def main() -> int:
 
         avg_loss = epoch_loss / len(train_loader)
 
-        # Quick accuracy check on test set every epoch
+
         model.eval()
         test_correct = 0
         test_total = 0
@@ -275,12 +271,12 @@ def main() -> int:
         print(
             f"Epoch {epoch+1}/10 Summary: Train Loss={avg_loss:.4f}, Train Acc={train_acc:.2f}%, Test Acc={test_acc:.2f}%")
 
-    # Save finetuned model
+
     torch.save(model.state_dict(), "lenet5_pruned_finetuned.pth")
     print(f"\n✓ Model saved to: lenet5_pruned_finetuned.pth")
     print(f"Model is still on: {next(model.parameters()).device}\n")
 
-    # PHASE 3: ANALYZE AFTER FINE-TUNING - FULL 1250 BATCHES
+
     print("\n" + "="*70)
     print("PHASE 3: FINAL ANALYSIS")
     print("="*70)
@@ -288,7 +284,7 @@ def main() -> int:
     accuracy_after = analyze_model(
         model, num_batches=1250, phase_name="AFTER FINE-TUNING ")
 
-    # Final comparison
+
     print("\n" + "="*70)
     print("IMPROVEMENT SUMMARY")
     print("="*70)

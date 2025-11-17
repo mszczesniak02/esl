@@ -38,24 +38,23 @@ def main() -> int:
     print("QUANTIZATION: float32 → int8")
     print("="*70 + "\n")
 
-    # Load model and data
+
     model_fp32 = model_load("prune/lenet5_fashion_mnist_0.9127.pth")
     model_fp32.to('cpu').eval()
     _, test_loader = dataset_load()
 
-    # Baseline
+
     torch.save(model_fp32.state_dict(), "/tmp/fp32.pth")
     fp32_size = os.path.getsize("/tmp/fp32.pth") / 1024 / 1024
     fp32_acc, fp32_time = measure_model(model_fp32, test_loader)
 
-    # Quantize to int8
     model_int8 = torch.quantization.quantize_dynamic(
         copy.deepcopy(model_fp32),
         {nn.Linear, nn.Conv2d},
         dtype=torch.qint8
     )
 
-    # Save quantized model
+
     torch.save(model_int8.state_dict(), "lenet5_quantized_int8.pth")
     print(f"✓ Quantized model saved to: lenet5_quantized_int8.pth\n")
 
@@ -63,7 +62,7 @@ def main() -> int:
     int8_size = os.path.getsize("/tmp/int8.pth") / 1024 / 1024
     int8_acc, int8_time = measure_model(model_int8, test_loader)
 
-    # Results
+
     print(f"{'Model':<12} {'Size (MB)':<12} {'Accuracy':<12} {'Speed (ms)':<12}")
     print("-"*70)
     print(f"{'float32':<12} {fp32_size:>8.2f}    {fp32_acc:>8.2f}%   {fp32_time:>8.2f}")

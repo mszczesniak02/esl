@@ -23,13 +23,12 @@ class FashionMNISTDataset(Dataset):
         pixels = row.iloc[1:].values.astype(np.float32)
         image = pixels.reshape(28, 28)
 
-        # Normalize to [0, 1]
         image = image / 255.0
 
         if self.transform:
             image = self.transform(image)
 
-        # Add channel dimension: (28, 28) -> (1, 28, 28)
+
         image = torch.tensor(image, dtype=torch.float32).unsqueeze(0)
         label = torch.tensor(label, dtype=torch.long)
 

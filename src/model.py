@@ -15,8 +15,8 @@ class LeNet5(nn.Module):
         super(LeNet5, self).__init__()
 
         self.conv1 = nn.Conv2d(1, 6, kernel_size=5,
-                               padding=2)  # 28x28 -> 28x28
-        # 14x14 -> 10x10
+                               padding=2)  
+
         self.conv2 = nn.Conv2d(6, 16, kernel_size=5)
 
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
@@ -25,17 +25,16 @@ class LeNet5(nn.Module):
 
     def forward(self, x, return_features=False):
         x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, 2)  # 28x28 -> 14x14
+        x = F.max_pool2d(x, 2)  
 
         x = F.relu(self.conv2(x))
-        x = F.max_pool2d(x, 2)  # 10x10 -> 5x5
+        x = F.max_pool2d(x, 2)  
 
-        # Flatten
+
         x = x.view(x.size(0), -1)
 
-        # Fully connected
         x = F.relu(self.fc1(x))
-        features = F.relu(self.fc2(x))  # 84-dim embeddings for visualization
+        features = F.relu(self.fc2(x))  
         x = self.fc3(features)
 
         if return_features:
@@ -89,11 +88,11 @@ def model_load_quantized(path, device='cpu'):
         print(f"⚠️  Warning: Quantized models only work on CPU, changing device to 'cpu'")
         device = 'cpu'
 
-    # Create base model
+
     model_fp32 = LeNet5()
     model_fp32.eval()
 
-    # Quantize it (this creates the right architecture)
+
     import torch.quantization
     model_quantized = torch.quantization.quantize_dynamic(
         model_fp32,
@@ -101,7 +100,7 @@ def model_load_quantized(path, device='cpu'):
         dtype=torch.qint8
     )
 
-    # Now load the saved quantized weights
+
     import warnings
     with warnings.catch_warnings():
         warnings.filterwarnings(

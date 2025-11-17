@@ -32,7 +32,7 @@ def train_epoch(model, loader, criterion, optimizer, device, epoch, writer, step
 
         loss.backward()
 
-        # Gradient clipping to prevent exploding gradients
+
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
         optimizer.step()
@@ -45,13 +45,13 @@ def train_epoch(model, loader, criterion, optimizer, device, epoch, writer, step
         correct += predicted.eq(labels).sum().item()
 
         running_acc = float(correct) / float(total)
-        # Update progress bar
+
         loop.set_postfix({
             'loss': f'{loss.item():.4f}',
             'acc': f'{100. * correct / total:.2f}%'
         })
 
-        # Tensorboard -> per batch
+
         step += 1
         writer.add_scalar('batch/training-loss', loss.item(), step)
         writer.add_scalar('batch/training-accuracy', running_acc, step)
@@ -84,7 +84,7 @@ def evaluate(model, loader, criterion, device, epoch, writer):
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Update progress bar
+
             loop.set_postfix({
                 'loss': f'{loss.item():.4f}',
                 'acc': f'{100. * correct / total:.2f}%'
@@ -96,14 +96,14 @@ def evaluate(model, loader, criterion, device, epoch, writer):
 
 
 def main():
-    # Fashion MNIST class names
+
     class_names = ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
                    "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
 
     train_loader, test_loader = dataset_load(print_params=True)
     model, criterion, optimizer = model_set()
 
-    # Train the model
+
     train_losses = []
     train_accs = []
     test_losses = []
@@ -112,7 +112,6 @@ def main():
     best_acc = 0.0
     best_model_path = None
 
-    # Early stopping
     patience = 20
     epochs_without_improvement = 0
 
@@ -143,12 +142,12 @@ def main():
             'test': test_acc
         }, epoch)
 
-        # Save best model and early stopping
+
         if test_acc > best_acc:
             best_acc = test_acc
             best_model_path = f'models/lenet5_fashion_mnist_{test_acc/100:.4f}.pth'
             torch.save(model.state_dict(), best_model_path)
-            epochs_without_improvement = 0  # Reset counter
+            epochs_without_improvement = 0  
             epoch_loop.set_description(
                 f'Epochs (Best: {best_acc:.2f}% Saved)')
         else:
@@ -156,7 +155,7 @@ def main():
             epoch_loop.set_description(
                 f'Epochs (Best: {best_acc:.2f}%, No improvement: {epochs_without_improvement}/{patience})')
 
-        # Early stopping check
+
         if epochs_without_improvement >= patience:
             print(
                 f"Early stopping triggered! No improvement for {patience} epochs.")
@@ -171,7 +170,7 @@ def main():
     print(f" Best Test Accuracy: {best_acc:.2f}%")
     print(f"Best model saved as: {best_model_path}")
 
-    # Generate confusion matrix for best model and log to TensorBoard
+
 
     cm = plot_confusion_matrix(model, test_loader, DEVICE, class_names,
                                writer, global_step=EPOCHS-1, tag='final/confusion_matrix')
