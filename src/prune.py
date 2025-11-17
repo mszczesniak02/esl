@@ -11,13 +11,10 @@ import numpy as np
 from model import *
 from hparams import *
 from dataloader import *
-import random
-import matplotlib.pyplot as plt
-from inference import *
 
 
 def analyze_model(model, num_batches=400, phase_name=""):
-    """Analyze model accuracy on test batches"""
+
     model.eval()
     _, dataloader = dataset_load()
 

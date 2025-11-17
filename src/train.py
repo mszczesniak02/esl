@@ -8,10 +8,6 @@ from model import *
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
-
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
 from src.hparams_tuning import plot_confusion_matrix
 
 

@@ -4,8 +4,11 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
+import warnings
 import os
+#import torch.quantization
+
+
 from hparams import *
 from dataloader import *
 
@@ -44,14 +47,14 @@ class LeNet5(nn.Module):
 
 def model_set(lrate=LEARNING_RATE) -> tuple[LeNet5, nn.CrossEntropyLoss, optim.Adam]:
     model = LeNet5(num_classes=NUM_CLASSES).to(DEVICE)
-    print(f" Model LeNet5 on: {DEVICE}")
+    print(f"Model LeNet5 on: {DEVICE}")
     print(f"Total parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     optimizer = optim.Adam(model.parameters(), lr=lrate)
     criterion = nn.CrossEntropyLoss()
 
-    print(f"    Loss function: CrossEntropyLoss")
-    print(f"     Optimizer LR:{lrate}")
+    print(f"Loss function: CrossEntropyLoss")
+    print(f"Optimizer LR:{lrate}")
 
     return model, criterion, optimizer
 
@@ -61,31 +64,20 @@ def model_load(path=MODEL_PATH, device=DEVICE) -> LeNet5:
         raise FileNotFoundError(f"Model file not found: {path}")
     model = LeNet5()
 
-    model.load_state_dict(torch.load(
-        path, map_location=device, weights_only=False))
+
+    torch.load(path, map_location=device)
     model = model.to(device)
 
     return model
 
 
 def model_load_quantized(path, device='cpu'):
-    """
-    Load a quantized model (int8).
-
-    Note: Quantized models must run on CPU, not CUDA.
-
-    Args:
-        path: Path to quantized model (.pth file)
-        device: Must be 'cpu' for quantized models
-
-    Returns:
-        Quantized LeNet5 model
-    """
+    
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Model file not found: {path}")
+        raise FileNotFoundError("Model file not found: {path}")
 
     if device != 'cpu':
-        print(f"⚠️  Warning: Quantized models only work on CPU, changing device to 'cpu'")
+        print("Quantized models only work on CPU, changing device to 'cpu'")
         device = 'cpu'
 
 
@@ -93,7 +85,7 @@ def model_load_quantized(path, device='cpu'):
     model_fp32.eval()
 
 
-    import torch.quantization
+
     model_quantized = torch.quantization.quantize_dynamic(
         model_fp32,
         {nn.Linear, nn.Conv2d},
@@ -101,7 +93,7 @@ def model_load_quantized(path, device='cpu'):
     )
 
 
-    import warnings
+
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore", category=UserWarning, message=".*TypedStorage is deprecated.*")

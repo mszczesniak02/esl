@@ -20,10 +20,7 @@ from torchvision.utils import make_grid
 
 
 def plot_confusion_matrix(model, loader, device, class_names, writer, global_step, tag='confusion_matrix'):
-    """
-    Generate and log confusion matrix to TensorBoard
-    Shows only raw counts for clarity
-    """
+
     model.eval()
     all_preds = []
     all_labels = []
@@ -177,9 +174,7 @@ def dataset_visualize(dataset: pd.DataFrame, file_title="dataset_visualize.png",
 
 
 def dataset_load(train_path=TRAIN_DATA_PATH, test_path=TEST_DATA_PATH, bsize=BATCH_SIZE, epochs=EPOCHS, ) -> tuple[DataLoader, DataLoader]:
-    """
-    Load the CSV data into memory and convert it into DataLoader with global hyperparameters  
-    """
+
     train_dataset = pd.read_csv(train_path)
     test_dataset = pd.read_csv(test_path)
 

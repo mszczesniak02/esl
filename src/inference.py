@@ -55,16 +55,16 @@ def plot_inference(images=None, labels=None, figtitle='Fashion_MNIST_labels', pr
     plt.show()
 
 
-def main() -> int:
+def main():
 
     is_quantized = 'int8' in MODEL_PATH or 'quantized' in MODEL_PATH or 'int4' in MODEL_PATH
 
     if is_quantized:
-        print(f"⚙️  Loading quantized model: {MODEL_PATH}")
+        print(f"Loading quantized model: {MODEL_PATH}")
         model = model_load_quantized(MODEL_PATH, device='cpu')
         device = 'cpu'  
     else:
-        print(f"⚙️  Loading float32 model: {MODEL_PATH}")
+        print(f"Loading float32 model: {MODEL_PATH}")
         model = model_load(MODEL_PATH)
         device = DEVICE
 

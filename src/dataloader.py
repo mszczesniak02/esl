@@ -36,14 +36,7 @@ class FashionMNISTDataset(Dataset):
 
 
 def dataset_visualize(dataset: pd.DataFrame, file_title="dataset_visualize.png", file_path=FIGURES_PATH) -> None:
-    """
-    Visualize the dataset, show a random picure of each category from a selected dataset
 
-    Parameters
-    ----------
-    dataset : pd.DataFrame dataset to show a the pictures from
-
-    """
 
     label_names = ["T-shirt/top", "Trouser", "Pullover", "Dress",
                    "Coat", "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
@@ -73,9 +66,7 @@ def dataset_visualize(dataset: pd.DataFrame, file_title="dataset_visualize.png",
 
 
 def dataset_load(train_path=TRAIN_DATA_PATH, test_path=TEST_DATA_PATH, bsize=BATCH_SIZE, epochs=EPOCHS, print_params=False) -> tuple[DataLoader, DataLoader]:
-    """
-    Load the CSV data into memory and convert it into DataLoader with global hyperparameters  
-    """
+
     train_dataset = pd.read_csv(train_path)
     test_dataset = pd.read_csv(test_path)
 

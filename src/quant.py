@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torch.quantization
 import os
 import copy
 import time
@@ -11,7 +10,6 @@ from src.dataloader import *
 
 
 def measure_model(model, dataloader, num_batches=400):
-    """Measure accuracy and speed"""
     model.eval()
     correct = 0
     total = 0
