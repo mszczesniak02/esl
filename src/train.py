@@ -2,24 +2,36 @@ from hparams import *
 from tqdm import tqdm
 
 import numpy as np
-from src.dataloader import *
+from dataloader import *
 from model import *
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
-from src.hparams_tuning import plot_confusion_matrix
+from hparams_tuning import plot_confusion_matrix
 
 
-def train_epoch(model, loader, criterion, optimizer, device, epoch, writer, step=STEP, log_images=False):
+def train_epoch(model: LeNet5, loader: DataLoader, criterion, optimizer, device=DEVICE):
+    """Train model for one epoch with gradient clipping
+
+    Args:
+        model (LeNet5): Model to train
+        loader (DataLoader): Training dataloader
+        criterion: Loss function (CrossEntropyLoss)
+        optimizer: Optimizer (Adam)
+        device (torch.device): Device for training. Defaults to DEVICE.
+
+    Returns:
+        tuple: Average loss and accuracy (%) for the epoch
+    """
     model.train()
+
     running_loss = 0.0
     correct = 0
     total = 0
-    batch_losses = []
 
     loop = tqdm(loader, desc='Training', leave=False)
-    for batch_idx, (images, labels) in enumerate(loop):
+    for images, labels in loop:
 
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
@@ -28,41 +40,40 @@ def train_epoch(model, loader, criterion, optimizer, device, epoch, writer, step
 
         loss.backward()
 
-
+        # deal with exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
         optimizer.step()
 
         running_loss += loss.item()
 
-        batch_losses.append(loss.item())
         _, predicted = outputs.max(1)
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
-
-        running_acc = float(correct) / float(total)
-
+        # tqdm loop
         loop.set_postfix({
             'loss': f'{loss.item():.4f}',
             'acc': f'{100. * correct / total:.2f}%'
         })
 
-
-        step += 1
-        writer.add_scalar('batch/training-loss', loss.item(), step)
-        writer.add_scalar('batch/training-accuracy', running_acc, step)
-        #
-        if log_images and batch_idx == 0:
-            img_grid = make_grid(images[:8])
-            writer.add_image(f"FMNIST_Images", img_grid, step)
-        #
     epoch_loss = running_loss / len(loader)
     epoch_acc = 100. * correct / total
 
     return epoch_loss, epoch_acc
 
 
-def evaluate(model, loader, criterion, device, epoch, writer):
+def evaluate(model: LeNet5, loader: DataLoader, criterion, device: torch.device):
+    """Evaluate model on validation/test set without gradient updates
+
+    Args:
+        model (LeNet5): Model to evaluate
+        loader (DataLoader): Validation/test dataloader
+        criterion: Loss function
+        device (torch.device): Device for evaluation
+
+    Returns:
+        tuple: Average loss and accuracy (%)
+    """
     model.eval()
     running_loss = 0.0
     correct = 0
@@ -79,8 +90,7 @@ def evaluate(model, loader, criterion, device, epoch, writer):
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
-
-
+            # tqdm loop
             loop.set_postfix({
                 'loss': f'{loss.item():.4f}',
                 'acc': f'{100. * correct / total:.2f}%'
@@ -91,87 +101,71 @@ def evaluate(model, loader, criterion, device, epoch, writer):
     return epoch_loss, epoch_acc
 
 
-def main():
+def train_model(model: LeNet5, criterion, optimizer, epochs: int, is_pruning: bool = False, print_info: bool = False):
+    """Train model with early stopping and save best checkpoint
 
-    class_names = ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
-                   "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
+    Args:
+        model (LeNet5): Model to train
+        criterion: Loss function
+        optimizer: Optimizer
+        epochs (int): Maximum number of training epochs
+        is_pruning (bool, optional): Use 'model_pruned_' filename prefix. Defaults to False.
+        print_info (bool, optional): Print dataset info. Defaults to False.
 
-    train_loader, test_loader = dataset_load(print_params=True)
-    model, criterion, optimizer = model_set()
+    Returns:
+        LeNet5: Trained model
+    """
+    best_acc = 0.0  # stores best accuracy throughout all training
+    patience_counter = 0  # counter for early stopping
 
+    train_loader, test_loader = dataset_load(
+        epochs=epochs, print_info=print_info)
 
-    train_losses = []
-    train_accs = []
-    test_losses = []
-    test_accs = []
-
-    best_acc = 0.0
-    best_model_path = None
-
-    patience = 20
-    epochs_without_improvement = 0
-
-    writer = SummaryWriter(
-        TENSORBOARD_LOG_DIR+f"/batch_size_{BATCH_SIZE}_lr_{LEARNING_RATE:.4e}")
-    print("Training...")
-
-    epoch_loop = tqdm(range(EPOCHS), desc='Epochs', leave=False)
-    for epoch in epoch_loop:
-        train_loss, train_acc = train_epoch(
-            model, train_loader, criterion, optimizer, DEVICE, epoch, writer, log_images=(epoch == 0))
-
-        test_loss, test_acc = evaluate(
-            model, test_loader, criterion, DEVICE, epoch, writer)
-
-        train_losses.append(train_loss)
-        train_accs.append(train_acc)
-        test_losses.append(test_loss)
-        test_accs.append(test_acc)
-
-        writer.add_scalars('epoch/loss', {
-            'train': train_loss,
-            'test': test_loss
-        }, epoch)
-
-        writer.add_scalars('epoch/accuracy', {
-            'train': train_acc,
-            'test': test_acc
-        }, epoch)
-
+    loop = tqdm(range(epochs), desc="Epochs", leave=False)
+    for epoch in loop:
+        _, _ = train_epoch(model, train_loader, criterion, optimizer, DEVICE)
+        _, test_acc = evaluate(model, test_loader, criterion, DEVICE)
 
         if test_acc > best_acc:
             best_acc = test_acc
-            best_model_path = f'models/lenet5_fashion_mnist_{test_acc/100:.4f}.pth'
-            torch.save(model.state_dict(), best_model_path)
-            epochs_without_improvement = 0  
-            epoch_loop.set_description(
-                f'Epochs (Best: {best_acc:.2f}% Saved)')
+
+            if is_pruning:
+                model_save(
+                    model, filename=f"model_pruned_{best_acc:.2f}.pth")
+            else:
+                model_save(
+                    model, filename=f"model_{best_acc:.2f}.pth")
+
+            # tqdm loop - better model saved
+            patience_counter = 0
+            loop.set_description(
+                f'Epochs (Best: {best_acc:.2f}%)')
         else:
-            epochs_without_improvement += 1
-            epoch_loop.set_description(
-                f'Epochs (Best: {best_acc:.2f}%, No improvement: {epochs_without_improvement}/{patience})')
+            patience_counter += 1
 
-
-        if epochs_without_improvement >= patience:
+            # tqdm loop - no improvement
+            loop.set_description(
+                f'Epochs (Best: {best_acc:.2f}%, No improvement: {patience_counter}/{PATIENCE})')
+        if patience_counter >= PATIENCE:
             print(
-                f"Early stopping triggered! No improvement for {patience} epochs.")
+                f"Early stopping - no improvement over {PATIENCE} epochs.")
             break
 
-    print('-' * 50)
-    if epochs_without_improvement >= patience:
+    if patience_counter >= PATIENCE:
         print(f"Training stopped early at epoch {epoch + 1}/{EPOCHS}")
     else:
         print("Training finished.")
-    print(f"Final Test Accuracy: {test_accs[-1]:.2f}%")
+
     print(f" Best Test Accuracy: {best_acc:.2f}%")
-    print(f"Best model saved as: {best_model_path}")
+
+    return model
 
 
+def main() -> int:
 
-    cm = plot_confusion_matrix(model, test_loader, DEVICE, class_names,
-                               writer, global_step=EPOCHS-1, tag='final/confusion_matrix')
+    model, criterion, optimizer = model_set()
+    model = train_model(model, criterion, optimizer, EPOCHS, False)
 
-    writer.close()
     return 0
 
 

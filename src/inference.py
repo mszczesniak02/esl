@@ -9,7 +9,14 @@ import matplotlib.pyplot as plt
 
 
 def plot_inference(images=None, labels=None, figtitle='Fashion_MNIST_labels', predicted_output=None):
+    """Plot and save 2x4 grid of images with labels and optional predictions
 
+    Args:
+        images (_type_, optional): Batch of images to plot. Defaults to None (load from dataset).
+        labels (_type_, optional): Ground truth labels. Defaults to None.
+        figtitle (str, optional): Figure title and filename. Defaults to 'Fashion_MNIST_labels'.
+        predicted_output (_type_, optional): Model predictions for comparison. Defaults to None.
+    """
     label_names = ["T-shirt/top", "Trouser", "Pullover", "Dress",
                    "Coat", "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
 
@@ -57,12 +64,14 @@ def plot_inference(images=None, labels=None, figtitle='Fashion_MNIST_labels', pr
 
 def main():
 
-    is_quantized = 'int8' in MODEL_PATH or 'quantized' in MODEL_PATH or 'int4' in MODEL_PATH
+    # to change the model for inference -> change *MODEL_PATH* in hparams.py
+
+    is_quantized = 'int8' in MODEL_PATH or 'quant' in MODEL_PATH or 'final' in MODEL_PATH
 
     if is_quantized:
         print(f"Loading quantized model: {MODEL_PATH}")
-        model = model_load_quantized(MODEL_PATH, device='cpu')
-        device = 'cpu'  
+        model = model_load_quantized(MODEL_PATH)
+        device = 'cpu'
     else:
         print(f"Loading float32 model: {MODEL_PATH}")
         model = model_load(MODEL_PATH)
@@ -83,7 +92,6 @@ def main():
 
     with torch.no_grad():
 
-
         t_start = time.time()
 
         outputs = model(images)
@@ -94,7 +102,6 @@ def main():
 
         predictions = outputs.argmax(dim=1)
         current_accuracy = (predictions == labels).float().mean().item()
-
 
         try:
             mp = MODEL_PATH.strip().split("_")

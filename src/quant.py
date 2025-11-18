@@ -2,76 +2,48 @@ import torch
 from torch import nn
 import os
 import copy
-import time
 
 from model import *
 from hparams import *
-from src.dataloader import *
-
-
-def measure_model(model, dataloader, num_batches=400):
-    model.eval()
-    correct = 0
-    total = 0
-    start_time = time.time()
-
-    with torch.no_grad():
-        for idx, (images, labels) in enumerate(dataloader):
-            if idx >= num_batches:
-                break
-
-            images, labels = images.to('cpu'), labels.to('cpu')
-            outputs = model(images)
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    accuracy = 100 * correct / total
-    avg_time_ms = ((time.time() - start_time) / num_batches) * 1000
-    return accuracy, avg_time_ms
+from dataloader import *
 
 
 def main() -> int:
-    print("\n" + "="*70)
-    print("QUANTIZATION: float32 → int8")
-    print("="*70 + "\n")
 
+    print("\n\nQuantisizing: float32 -> int8\n\n")
 
-    model_fp32 = model_load("prune/lenet5_fashion_mnist_0.9127.pth")
+    model_to_quant_path = r"../models/q.pth"
+    model_quanted_path = r"../models/model_quant_new.pth"
+
+    model_fp32 = model_load(model_to_quant_path)
     model_fp32.to('cpu').eval()
     _, test_loader = dataset_load()
 
-
-    torch.save(model_fp32.state_dict(), "/tmp/fp32.pth")
-    fp32_size = os.path.getsize("/tmp/fp32.pth") / 1024 / 1024
-    fp32_acc, fp32_time = measure_model(model_fp32, test_loader)
-
+    # quantisize the weights
     model_int8 = torch.quantization.quantize_dynamic(
         copy.deepcopy(model_fp32),
         {nn.Linear, nn.Conv2d},
         dtype=torch.qint8
     )
 
+    torch.save(model_int8.state_dict(), model_quanted_path)
+    print(f"Quantized model saved in {model_quanted_path}")
 
-    torch.save(model_int8.state_dict(), "lenet5_quantized_int8.pth")
-    print(f"✓ Quantized model saved to: lenet5_quantized_int8.pth\n")
+    # get file sizes
+    fp32_size = os.path.getsize(model_to_quant_path) / 1024
+    int8_size = os.path.getsize(model_quanted_path) / 1024
 
-    torch.save(model_int8.state_dict(), "/tmp/int8.pth")
-    int8_size = os.path.getsize("/tmp/int8.pth") / 1024 / 1024
-    int8_acc, int8_time = measure_model(model_int8, test_loader)
+    print("Measuring models...")
+    fp32_acc, _, fp32_time = model_measure(model_fp32, test_loader)
+    int8_acc, _, int8_time = model_measure(model_int8, test_loader)
 
-
-    print(f"{'Model':<12} {'Size (MB)':<12} {'Accuracy':<12} {'Speed (ms)':<12}")
-    print("-"*70)
-    print(f"{'float32':<12} {fp32_size:>8.2f}    {fp32_acc:>8.2f}%   {fp32_time:>8.2f}")
-    print(f"{'int8':<12} {int8_size:>8.2f}    {int8_acc:>8.2f}%   {int8_time:>8.2f}")
-    print("-"*70)
-    print(f"Compression: {fp32_size/int8_size:.1f}x smaller")
-    print(f"Speedup:     {fp32_time/int8_time:.1f}x faster")
-    print(f"Accuracy:    {int8_acc - fp32_acc:+.2f}%\n")
+    print("Model\tsize [kB]\tt_avg [ms]\tacc (current) [%]")
+    print(f"base\t{fp32_size:.3f}\t\t{fp32_time:.3f}\t\t{fp32_acc}")
+    print(f"quant\t{int8_size:.3f}\t\t{int8_time:.3f}\t\t{int8_acc}")
 
     return 0
 
 
 if __name__ == "__main__":
     main()
+    # measure_model()
