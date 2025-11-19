@@ -1,7 +1,5 @@
-# ESL - LeNet5 Fashion MNIST
----
-### ***LeNet5 CNN*** with **pruning** and **quantization** (Fashion MNIST dataset)
----
+# ESL - ***LeNet5 CNN*** with **pruning** and **quantization** (Fashion MNIST dataset)
+
 Mateusz Szczęśniak, Wojciech Minior, Kacper Kamiński
 ---
 
@@ -18,6 +16,7 @@ This project implements LeNet5 architecture trained on Fashion MNIST dataset. Th
 
 #### Single model inference (base model)
 ![Inference_photo](visuals/Fashion_MNIST_Predictions.png "Model Inference")
+
 (Green label - correct guess, red label, invalid guess)
 
 #### Comparison
