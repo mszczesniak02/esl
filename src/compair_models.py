@@ -10,16 +10,17 @@ import random
 
 # 91.27% accuracy  - BASE MODEL
 MODEL_PATH_BASE = "../models/model_base.pth"
-# 90.17% accuracy  - QUANT ONLY MODEL
+# 91.17% accuracy  - QUANT ONLY MODEL (no improvement from retraining)
 MODEL_PATH_QUANT = "../models/model_quant.pth"
-# 86.00% accuracy  - PRUNED ONLY MODEL
+# 86.00% accuracy  - PRUNED ONLY MODEL (no improvement from retraining )
 MODEL_PATH_PRUNED = "../models/model_pruned.pth"
+# MODEL_PATH_PRUNED = "../models/model_pruned_81.50.pth"
 # ~85.00% accuracy - PRUNED + QUANT MODEL
 MODEL_PATH_PRUNED_QUANT = "../models/model_final.pth"
 
 
 def model_get_size(model_path: str) -> float:
-    """Zwraca rozmiar modelu w KB"""
+    """get model size in KB"""
     if not os.path.exists(model_path):
         return None
     size_bytes = os.path.getsize(model_path)
@@ -64,7 +65,7 @@ def plot_comparison(images, labels, predictions_dict, model_info):
     for model_idx, (model_name, predictions) in enumerate(predictions_dict.items()):
         info = model_info[model_name]
 
-        # Tytuł wiersza z informacją o modelu
+        # title name
         row_title = (f"{model_name}\n"
                      f"Size: {info['size_kb']:.1f} KB | "
                      f"Batch: {info['time_batch_ms']:.2f} ms | "
@@ -140,7 +141,7 @@ def main():
             outputs = model(images.to('cpu'))
             predictions = outputs.argmax(dim=1)
 
-        # Zapisz wyniki
+        # save results
         predictions_dict[model_name] = predictions.cpu()
         model_info[model_name] = {
             "size_kb": size_kb,
@@ -148,14 +149,14 @@ def main():
             "time_sample_ms": time_sample
         }
 
-    # Jeśli mamy przynajmniej 1 model, pokaż porównanie
+    # show and plot models
     if len(predictions_dict) > 0:
         print("Generating visual comparison...")
         plot_comparison(images.cpu(), labels.cpu(),
                         predictions_dict, model_info)
         print("Comparison saved to: ../visuals/model_comparison.png")
 
-        # Porównanie kompresji
+        # compair compression
         if "Base (float32)" in model_info:
             base_size = model_info["Base (float32)"]["size_kb"]
             base_time = model_info["Base (float32)"]["time_batch_ms"]

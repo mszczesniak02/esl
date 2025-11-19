@@ -23,4 +23,4 @@ FIGURES_PATH = RESULTS_PATH + "assets/"
 TENSORBOARD_LOG_DIR = RESULTS_PATH + "fashion_mnist/"
 MODELS_DIR = "../models/"  # saved models go here
 # model for inference
-MODEL_PATH = "../models/model_pruned.pth"
+MODEL_PATH = "../models/model_base.pth"

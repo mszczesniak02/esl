@@ -7,12 +7,14 @@ from model import *
 from hparams import *
 from dataloader import *
 
+from train import train_model
+
 
 def main() -> int:
 
     print("\n\nQuantisizing: float32 -> int8\n\n")
 
-    model_to_quant_path = r"../models/q.pth"
+    model_to_quant_path = r"../models/model_base.pth"
     model_quanted_path = r"../models/model_quant_new.pth"
 
     model_fp32 = model_load(model_to_quant_path)
@@ -25,6 +27,16 @@ def main() -> int:
         {nn.Linear, nn.Conv2d},
         dtype=torch.qint8
     )
+
+    print("Retraining model for 10 epochs")
+    _, criterion, optimizer = model_set()
+    extra_epochs = 10
+
+    model_int8.to("cpu")
+    DEVICE = "cpu"
+    model_int8 = train_model(model_int8, criterion,
+                             optimizer, extra_epochs, False, False)
+    print("Retraining done.")
 
     torch.save(model_int8.state_dict(), model_quanted_path)
     print(f"Quantized model saved in {model_quanted_path}")
